@@ -19,7 +19,6 @@ void UI::refreshMailList() {
 	mailListView->setGeometry(mailDialog->getGeometry());
 	mailListView->addColumn("From");
 	mailListView->addColumn("Subject");
-	mailListView->addColumn("UID");
 	auto messages = imapSession->getMessages();
 	if(!viewToMessageMap)
 		viewToMessageMap = new map<FObject*, IMAP::Message*>();
