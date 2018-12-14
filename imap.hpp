@@ -6,51 +6,80 @@
 #include <functional>
 
 namespace IMAP {
-class Message {
-public:
-	Message(){}
-	/**
-	 * Get the body of the message. You may chose to either include the headers or not.
-	 */
-	std::string getBody();
-	/**
-	 * Get one of the descriptor fields (subject, from, ...)
-	 */
-	std::string getField(std::string fieldname);
-	/**
-	 * Remove this mail from its mailbox
-	 */
-	void deleteFromMailbox();
-};
 
-class Session {
-public:
-	Session(std::function<void()> updateUI);
+  class Session; // forward declaration
 
-	/**
-	 * Get all messages in the INBOX mailbox terminated by a nullptr (like we did in class)
-	 */
-	Message** getMessages();
+  class Message {
+  private:
+    
+    Session* session;
+    uint32_t message_UID;
+    std::string from, subject, body;
 
-	/**
-	 * connect to the specified server (143 is the standard unencrypte imap port)
-	 */
-	void connect(std::string const& server, size_t port = 143);
+    // decompose the sender clist to extract useful information
+    std::string fromList(clist* from_lst);
 
-	/**
-	 * log in to the server (connect first, then log in)
-	 */
-	void login(std::string const& userid, std::string const& password);
+  public:
+    
+    Message(Session* session, uint32_t message_UID);
+    /**
+     * Get the body of the message. You may chose to either include the headers or not.
+     */
+    std::string getBody();
+    /**
+     * Get one of the descriptor fields (subject, from, ...)
+     */
+    std::string getField(std::string fieldname);
+    /**
+     * Remove this mail from its mailbox
+     */
+    void deleteFromMailbox();
+  };
+  
+  class Session {
+  private:
 
-	/**
-	 * select a mailbox (only one can be selected at any given time)
-	 * 
-	 * this can only be performed after login
-	 */
-	void selectMailbox(std::string const& mailbox);
+    const char* current_mailbox;
+    struct mailimap* imapSession;
+    std::function<void()> updateUI;
+    Message** messages;
 
-	~Session();
-};
+    // returns the number of emails in the mailbox
+    uint32_t getMailCount();
+    
+  public:
+
+    Session(std::function<void()> updateUI);
+    
+    /**
+     * Get all messages in the INBOX mailbox terminated by a nullptr (like we did in class)
+     */
+    Message** getMessages();
+    
+    /**
+     * connect to the specified server (143 is the standard unencrypted imap port)
+     */
+    void connect(std::string const& server, size_t port = 143);
+    
+    /**
+     * log in to the server (connect first, then log in)
+     */
+    void login(std::string const& userid, std::string const& password);
+    
+    /**
+     * select a mailbox (only one can be selected at any given time)
+     * 
+     * this can only be performed after login
+     */
+    void selectMailbox(std::string const& mailbox);
+
+    // return uid of message
+    uint32_t getUID(struct mailimap_msg_att* msg_att);
+    
+    ~Session();
+
+    friend Message;
+  };
 }
 
 #endif /* IMAP_H */
