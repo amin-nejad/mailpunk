@@ -33,6 +33,8 @@ namespace IMAP {
     /**
      * Remove this mail from its mailbox
      */
+    // this function manages to delete the selected mail but unfortunately crashes in the
+    // process. For the life of me I can't figure out why
     void deleteFromMailbox();
   };
   
@@ -46,7 +48,10 @@ namespace IMAP {
 
     // returns the number of emails in the mailbox
     uint32_t getMailCount();
-    
+
+    // return uid of message
+    uint32_t getUID(struct mailimap_msg_att* msg_att);
+
   public:
 
     Session(std::function<void()> updateUI);
@@ -72,9 +77,6 @@ namespace IMAP {
      * this can only be performed after login
      */
     void selectMailbox(std::string const& mailbox);
-
-    // return uid of message
-    uint32_t getUID(struct mailimap_msg_att* msg_att);
     
     ~Session();
 

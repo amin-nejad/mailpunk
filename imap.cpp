@@ -47,28 +47,19 @@ IMAP::Message** IMAP::Session::getMessages(){
 	      "ERROR! Unable to fetch messages.");
 
   messages = new Message*[number_of_messages + 1];
-  
+
+  int i = 0;
   for (cur = clist_begin(fetch_result); cur != NULL; cur = clist_next(cur)) {
     
     auto msg_att = (mailimap_msg_att*) clist_content(cur);
     uint32_t UID = getUID(msg_att);
     
-    int i = 0;
     if (UID != 0) {
-
-      for (; messages[i] != NULL; i++){
-
-	messages[i] = new Message(this, UID);
-      }
-      
-      messages[i+1] = nullptr;
-
-    } else {
-
-      messages[i] = nullptr;
+      messages[i++] = new Message(this, UID);
     }
   }
-
+  messages[i] = nullptr;
+  
   // free memory
   mailimap_fetch_list_free(fetch_result);
   mailimap_fetch_type_free(fetch_type);
@@ -179,8 +170,9 @@ IMAP::Message::Message(Session* session, uint32_t message_UID)
       
       if (item_envelope->env_subject){
 	subject = item_envelope->env_subject;
-      } else if (item_envelope->env_from->frm_list){
-	fromList(item_envelope->env_from->frm_list);
+      }
+      if (item_envelope->env_from->frm_list){
+	from = fromList(item_envelope->env_from->frm_list);
       }
       
     }
@@ -198,28 +190,36 @@ IMAP::Message::Message(Session* session, uint32_t message_UID)
 
 string IMAP::Message::fromList(clist* from_lst){
 
+  string parsed_from;
   for (clistiter* i = clist_begin(from_lst); i != NULL; i = clist_next(i)){
-
+    
     auto address = (mailimap_address*) clist_content(i);
-
+    
     if (address->ad_mailbox_name &&
 	address->ad_host_name){
       
       if(address->ad_personal_name){
 
-	from += address->ad_personal_name + string(" ");
+	parsed_from += address->ad_personal_name + string(" ");
+	
+	parsed_from +=
+	  string("<")+
+	  address->ad_mailbox_name +
+	  string("@") +
+	  address->ad_host_name +
+	  string(">");
+
+      } else {
+	
+	parsed_from +=
+	  address->ad_mailbox_name +
+	  string("@") +
+	  address->ad_host_name;
       }
-      
-      from +=
-	string("<")+
-	address->ad_mailbox_name +
-	string("@") +
-	address->ad_host_name +
-	string(">");
-    }
-    
-    from += "; ";
+    }	  
   }
+  
+  return parsed_from;
 }
 
 string IMAP::Message::getBody(){
@@ -256,14 +256,15 @@ void IMAP::Message::deleteFromMailbox(){
   
   check_error(mailimap_expunge(session->imapSession),
 	      "ERROR! Unable to delete selected message");
-  
-  mailimap_set_free(set);
-  mailimap_store_att_flags_free(store_att_flags);
-  
+    
   for (int i = 0; session->messages[i]; i++) {
     delete session->messages[i];
     session->messages[i] = NULL;
   }
   
   session->updateUI();
+
+  mailimap_set_free(set);
+  mailimap_store_att_flags_free(store_att_flags);
+
 }
